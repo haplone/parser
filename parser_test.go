@@ -1411,7 +1411,7 @@ func (s *testParserSuite) TestIdentifier(c *C) {
 	s.RunTest(c, table)
 }
 
-func (s *testParserSuite) TestDDL(c *C) {
+func (s *testParserSuite) TestDDL33(c *C) {
 	table := []testCase{
 		{"CREATE", false},
 		{"CREATE TABLE", false},
@@ -1797,6 +1797,8 @@ func (s *testParserSuite) TestDDL(c *C) {
 
 		// for issue 5918
 		{"create table t (lv long varchar null)", true},
+
+		{"create table t like  select id,name from t1", true},
 	}
 	s.RunTest(c, table)
 }
