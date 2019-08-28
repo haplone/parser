@@ -48,6 +48,7 @@ const (
 	Mod        = "mod"
 	Xor        = "bitxor"
 	Div        = "div"
+	REALDIV     = "realdiv"
 	Mul        = "mul"
 	UnaryNot   = "not" // Avoid name conflict with Not in github/pingcap/check.
 	BitNeg     = "bitneg"
