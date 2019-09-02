@@ -451,6 +451,9 @@ func (s *testParserSuite) TestDMLStmt(c *C) {
 		{"admin show slow top internal 7", true},
 		{"admin show slow top all 9", true},
 		{"admin show slow recent 11", true},
+		{"admin reload expr_pushdown_blacklist", true},
+		{"admin plugins disable audit, whitelist", true},
+		{"admin plugins enable audit, whitelist", true},
 
 		// for on duplicate key update
 		{"INSERT INTO t (a,b,c) VALUES (1,2,3),(4,5,6) ON DUPLICATE KEY UPDATE c=VALUES(a)+VALUES(b);", true},
@@ -505,6 +508,31 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAAAAA5gm5Mg==
 '/*!*/;`, true},
+
+		// for split table index region syntax
+		{"split table t1 index idx1 by ('a'),('b'),('c')", true},
+		{"split table t1 index idx1 by (1)", true},
+		{"split table t1 index idx1 by ('abc',123), ('xyz'), ('yz', 1000)", true},
+		{"split table t1 index idx1 by ", false},
+		{"split table t1 index idx1 between ('a') and ('z') regions 10", true},
+		{"split table t1 index idx1 between ('a',1) and ('z',2) regions 10", true},
+		{"split table t1 index idx1 between () and () regions 10", true},
+		{"split table t1 index by (1)", false},
+
+		// for split table region.
+		{"split table t1 by ('a'),('b'),('c')", true},
+		{"split table t1 by (1)", true},
+		{"split table t1 by ('abc',123), ('xyz'), ('yz', 1000)", true},
+		{"split table t1 by ", false},
+		{"split table t1 between ('a') and ('z') regions 10", true},
+		{"split table t1 between ('a',1) and ('z',2) regions 10", true},
+		{"split table t1 between () and () regions 10", true},
+
+		// for show table regions.
+		{"show table t1 regions", true},
+		{"show table t1", false, },
+		{"show table t1 index idx1 regions", true},
+		{"show table t1 index idx1", false},
 	}
 	s.RunTest(c, table)
 }
@@ -1502,6 +1530,11 @@ func (s *testParserSuite) TestDDL(c *C) {
  PARTITION part9 VALUES LESS THAN (10) COMMENT = '10月份' ENGINE = InnoDB,
  PARTITION part10 VALUES LESS THAN (11) COMMENT = '11月份' ENGINE = InnoDB,
  PARTITION part11 VALUES LESS THAN (12) COMMENT = '12月份' ENGINE = InnoDB) */ ;`, true},
+		{`create table t (a int) /*!50100 partition by list (a) (
+partition p0 values in (1) ENGINE = InnoDB,
+partition p1 values in (29) ENGINE = InnoDB,
+partition p2 values in (2) ENGINE = InnoDB,
+partition p3 values in (3) ENGINE = InnoDB) */`, true},
 
 		// for check clause
 		{"create table t (c1 bool, c2 bool, check (c1 in (0, 1)), check (c2 in (0, 1)))", true},
@@ -1654,6 +1687,7 @@ func (s *testParserSuite) TestDDL(c *C) {
 		{"create table t (a timestamp default now() on update now())", true},
 		{"CREATE TABLE t (c TEXT) default CHARACTER SET utf8, default COLLATE utf8_general_ci;", true},
 		{"CREATE TABLE t (c TEXT) shard_row_id_bits = 1;", true},
+		{"CREATE TABLE t (c TEXT) shard_row_id_bits = 1, PRE_SPLIT_REGIONS = 1;", true},
 		// Create table with ON UPDATE CURRENT_TIMESTAMP(6), specify fraction part.
 		{"CREATE TABLE IF NOT EXISTS `general_log` (`event_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),`user_host` mediumtext NOT NULL,`thread_id` bigint(20) unsigned NOT NULL,`server_id` int(10) unsigned NOT NULL,`command_type` varchar(64) NOT NULL,`argument` mediumblob NOT NULL) ENGINE=CSV DEFAULT CHARSET=utf8 COMMENT='General log'", true},
 		// For reference_definition in column_definition.
@@ -1872,13 +1906,21 @@ func (s *testParserSuite) TestOptimizerHints(c *C) {
 	c.Assert(hints[1].Tables[0].L, Equals, "t3")
 	c.Assert(hints[1].Tables[1].L, Equals, "t4")
 
-	stmt, _, err = parser.Parse("SELECT /*+ MAX_EXECUTION_TIME(1000) */ * FROM t1 INNER JOIN t2 where t1.c1 = t2.c1", "", "")
-	c.Assert(err, IsNil)
-	selectStmt = stmt[0].(*ast.SelectStmt)
-	hints = selectStmt.TableHints
-	c.Assert(len(hints), Equals, 1)
-	c.Assert(hints[0].HintName.L, Equals, "max_execution_time")
-	c.Assert(hints[0].MaxExecutionTime, Equals, uint64(1000))
+	queries := []string{
+		"SELECT /*+ MAX_EXECUTION_TIME(1000) */ * FROM t1 INNER JOIN t2 where t1.c1 = t2.c1",
+		"SELECT /*+ MAX_EXECUTION_TIME(1000) */ 1",
+		"SELECT /*+ MAX_EXECUTION_TIME(1000) */ SLEEP(20)",
+		"SELECT /*+ MAX_EXECUTION_TIME(1000) */ 1 FROM DUAL",
+	}
+	for i, query := range queries {
+		stmt, _, err = parser.Parse(query, "", "")
+		c.Assert(err, IsNil)
+		selectStmt = stmt[0].(*ast.SelectStmt)
+		hints = selectStmt.TableHints
+		c.Assert(len(hints), Equals, 1)
+		c.Assert(hints[0].HintName.L, Equals, "max_execution_time", Commentf("case", i))
+		c.Assert(hints[0].MaxExecutionTime, Equals, uint64(1000))
+	}
 }
 
 func (s *testParserSuite) TestType(c *C) {
@@ -2349,6 +2391,15 @@ func (s *testParserSuite) TestSessionManage(c *C) {
 	s.RunTest(c, table)
 }
 
+func (s *testParserSuite) TestParseShowOpenTables(c *C) {
+	table := []testCase{
+		{"SHOW OPEN TABLES", true},
+		{"SHOW OPEN TABLES IN test", true},
+		{"SHOW OPEN TABLES FROM test", true},
+	}
+	s.RunTest(c, table)
+}
+
 func (s *testParserSuite) TestSQLModeANSIQuotes(c *C) {
 	parser := New()
 	parser.SetSQLMode(mysql.ModeANSIQuotes)
@@ -2656,5 +2707,22 @@ func (s *testParserSuite) TestFieldText(c *C) {
 		traceStmt := stmts[0].(*ast.TraceStmt)
 		c.Assert(traceStmt.Text(), Equals, sql)
 		c.Assert(traceStmt.Stmt.Text(), Equals, "select a from t")
+	}
+}
+
+func (s *testParserSuite) TestNotExistsSubquery(c *C) {
+	table := []testCase{
+		{`select * from t1 where not exists (select * from t2 where t1.a = t2.a)`, true},
+	}
+
+ 	parser := New()
+	for _, tt := range table {
+		stmt, _, err := parser.Parse(tt.src, "", "")
+		c.Assert(err, IsNil)
+
+ 		sel := stmt[0].(*ast.SelectStmt)
+		exists, ok := sel.Where.(*ast.ExistsSubqueryExpr)
+		c.Assert(ok, IsTrue)
+		c.Assert(exists.Not, Equals, tt.ok)
 	}
 }

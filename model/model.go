@@ -219,6 +219,10 @@ type TableInfo struct {
 	ShardRowIDBits uint64
 	// MaxShardRowIDBits uses to record the max ShardRowIDBits be used so far.
 	MaxShardRowIDBits uint64 `json:"max_shard_row_id_bits"`
+	// PreSplitRegions specify the pre-split region when create table.
+	// The pre-split region num is 2^(PreSplitRegions-1).
+	// And the PreSplitRegions should less than or equal to ShardRowIDBits.
+	PreSplitRegions uint64 `json:"pre_split_regions"`
 
 	Partition *PartitionInfo `json:"partition"`
 
@@ -326,6 +330,16 @@ func (t *TableInfo) Cols() []*ColumnInfo {
 		}
 	}
 	return publicColumns[0 : maxOffset+1]
+}
+
+// FindIndexByName finds index by name.
+func (t *TableInfo) FindIndexByName(idxName string) *IndexInfo {
+	for _, idx := range t.Indices {
+		if idx.Name.L == idxName {
+			return idx
+		}
+	}
+	return nil
 }
 
 // NewExtraHandleColInfo mocks a column info for extra handle column.

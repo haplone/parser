@@ -189,6 +189,7 @@ func (n *DeallocateStmt) Accept(v Visitor) (Node, bool) {
 // Prepared represents a prepared statement.
 type Prepared struct {
 	Stmt          StmtNode
+	StmtType      string
 	Params        []ParamMarkerExpr
 	SchemaVersion int64
 	UseCache      bool
@@ -656,6 +657,9 @@ const (
 	AdminChecksumTable
 	AdminShowSlow
 	AdminShowNextRowID
+	AdminReloadExprPushdownBlacklist
+	AdminPluginDisable
+	AdminPluginEnable
 )
 
 // HandleRange represents a range where handle value >= Begin and < End.
@@ -707,6 +711,7 @@ type AdminStmt struct {
 
 	HandleRanges []HandleRange
 	ShowSlow     *ShowSlow
+	Plugins      []string
 }
 
 // Accept implements Node Accept interface.

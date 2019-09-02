@@ -325,6 +325,7 @@ var tokenMap = map[string]int{
 	"LIKE":                     like,
 	"LIMIT":                    limit,
 	"LINES":                    lines,
+	"LIST":                     list,
 	"LOAD":                     load,
 	"LOCAL":                    local,
 	"LOCALTIME":                localTime,
@@ -400,6 +401,7 @@ var tokenMap = map[string]int{
 	"QUERIES":                  queries,
 	"QUICK":                    quick,
 	"SHARD_ROW_ID_BITS":        shardRowIDBits,
+	"PRE_SPLIT_REGIONS":        preSplitRegions,
 	"RANGE":                    rangeKwd,
 	"RECOVER":                  recover,
 	"READ":                     read,
@@ -408,6 +410,7 @@ var tokenMap = map[string]int{
 	"REDUNDANT":                redundant,
 	"REFERENCES":               references,
 	"REGEXP":                   regexpKwd,
+	"REGIONS":                  regions,
 	"RELOAD":                   reload,
 	"RENAME":                   rename,
 	"REPEAT":                   repeat,
@@ -444,6 +447,7 @@ var tokenMap = map[string]int{
 	"SMALLINT":                 smallIntType,
 	"SNAPSHOT":                 snapshot,
 	"SOME":                     some,
+	"SPLIT":                    split,
 	"SQL":                      sql,
 	"SQL_CACHE":                sqlCache,
 	"SQL_CALC_FOUND_ROWS":      sqlCalcFoundRows,
@@ -457,6 +461,7 @@ var tokenMap = map[string]int{
 	"STATS_META":               statsMeta,
 	"STATS_PERSISTENT":         statsPersistent,
 	"STATUS":                   status,
+	"OPEN":                     open,
 	"STD":                      stddevPop,
 	"STDDEV":                   stddevPop,
 	"STDDEV_POP":               stddevPop,
@@ -534,6 +539,7 @@ var tokenMap = map[string]int{
 	"YEAR":                     yearType,
 	"YEAR_MONTH":               yearMonth,
 	"ZEROFILL":                 zerofill,
+	"EXPR_PUSHDOWN_BLACKLIST":  exprPushdownBlacklist,
 }
 
 // See https://dev.mysql.com/doc/refman/5.7/en/function-resolution.html for details
